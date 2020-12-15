@@ -130,7 +130,10 @@ class MqttConnection(Connection):
 
     def publish(self, message, destination, config=False):
         """Publishes message to destination, logging if there is an error."""
-        self._publish_mqtt(message, destination, False, config)
+        if config:
+            self._publish_mqtt(message, destination, True, config)
+        else:
+            self._publish_mqtt(message, destination, False, config)
 
     def _publish_mqtt(self, message, topic, retain, config=False):
         try:
