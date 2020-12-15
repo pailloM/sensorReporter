@@ -52,6 +52,18 @@ class SysInfoSensor(Sensor):
         self.log.debug(str(json.dumps(dsk_usg)))
         return dsk_usg
 
+    def curr_temp(self):
+        """
+        Reports the current temperature of the first sensor
+        """
+        temps = psutil.sensors_temperatures()
+        for name, entries in temps.items():
+            for entry in entries:
+                curr_temp = entry.current
+                break
+            break
+        return curr_temp
+
     def check_state(self):
         """Calculate all required system information and request publish"""
         if "nb_core" in self.info_required:
@@ -66,6 +78,10 @@ class SysInfoSensor(Sensor):
             self.sys_info_dict["disk_usage"] = self.disk_usg()
         if "swap_per" in self.info_required:
             self.sys_info_dict["swap_per"] = psutil.swap_memory()
+        if "temp" in self.info_required:
+            self.sys_info_dict["Temperature"] = self.curr_temp()
+        if "load_avg" in self.info_required:
+            self.sys_info_dict["load_avg"] = psutil.getloadavg()
 
         self.publish_state()
         """Publishes the system info data."""
