@@ -18,9 +18,11 @@ Classes: Sensor
 """
 
 from abc import ABC
+import json
 import logging
 from configparser import NoOptionError
 from core.utils import set_log_level
+
 
 class Sensor(ABC):
     """Abstract class from which all sensors should inherit. check_state and/or
@@ -47,7 +49,132 @@ class Sensor(ABC):
             self.poll = -1
         self.last_poll = None
         set_log_level(params, self.log)
+        # MQTT config topic
+        self.log.info(str(publishers))
+        for con in publishers:
+            if "mqtt" in str(con):
+                self.mqtt_publisher = True
+            else:
+                self.mqtt_publisher = False
+        self.log.debug("mqtt_publisher: " + str(self.mqtt_publisher))
+        if self.mqtt_publisher:
+            try:
+                self.nb_of_values = int(params("NbOfValues"))
+            except NoOptionError:
+                self.nb_of_values = 0
+            self.device_class_dict = {
+                "binary_sensor": ["binare_sensor", "motion", "door", "window"],
+                "sensor": ["sensor", "humidity", "temperature", "battery"],
+            }
+            # get parameters to construct homeassistant config message
+            self.config_dict = {}
+            try:
+                self.config_dict["name"] = params("Destination")
+                self.log.debug("Config dict: " + str(self.config_dict))
+                try:
+                    self.config_dict["device_class"] = params("DeviceClass")
+                    # cannot reconstruct state topic. Missing root topic in this class
+                    self.config_dict["state_topic"] = params("StateTopic")
+                    if (
+                        self.config_dict["device_class"]
+                        in self.device_class_dict["binary_sensor"]
+                    ):
+                        self.sensor_type = "binary_sensor"
+                        try:
+                            self.config_dict["payload_on"] = "on"
+                            self.config_dict["payload_on"] = params("PayLoadOn")
+                        except NoOptionError:
+                            try:
+                                self.config_dict["payload_closed"] = params(
+                                    "PayLoadClosed"
+                                )
+                                del self.config_dict["payload_on"]
+                            except NoOptionError:
+                                self.config_dict["payload_on"] = "on"
+                        try:
+                            self.config_dict["payload_off"] = "off"
+                            self.config_dict["payload_off"] = params("PayLoadOff")
+                        except NoOptionError:
+                            try:
+                                self.config_dict["payload_open"] = params("PayLoadOpen")
+                                del self.config_dict["payload_off"]
+                            except NoOptionError:
+                                self.config_dict["payload_off"] = "off"
+                        # construct topic msg
+                        self.conf_topic = (
+                            params("DiscoveryPrefix")
+                            + "/"
+                            + "binary_sensor"
+                            + "/"
+                            + self.config_dict["name"]
+                            + "/config"
+                        )
+                        self.log.debug("Config dict: " + str(self.config_dict))
+                    elif (
+                        self.config_dict["device_class"]
+                        in self.device_class_dict["sensor"]
+                    ):
+                        self.sensor_type = "sensor"
+                        try:
+                            self.config_dict["unit_of_measurement"] = params("Unit")
+                            self.config_dict["unit_of_measurement"] = self.config_dict[
+                                "unit_of_measurement"
+                            ].split(",")
+                            self.log.debug(
+                                "Unit: " + str(self.config_dict["unit_of_measurement"])
+                            )
+                        except NoOptionError:
+                            self.config_dict["unit_of_measurement"] = ""
+                        try:
+                            self.config_dict["value_template"] = params("ValueTemplate")
+                            self.config_dict["value_template"] = self.config_dict[
+                                "value_template"
+                            ].split(",")
+                            self.log.debug(
+                                "Template: " + str(self.config_dict["value_template"])
+                            )
+                        except NoOptionError:
+                            self.config_dict["value_template"] = ""
+                        self.conf_topic = (
+                            "sensor" + "/" + self.config_dict["name"] + "/config"
+                        )
+                        # construct topic msg
+                        self.conf_topic = (
+                            params("DiscoveryPrefix")
+                            + "/"
+                            + "sensor"
+                            + "/"
+                            + self.config_dict["name"]
+                            + "/config"
+                        )
+                        self.log.debug("Config dict: " + str(self.config_dict))
+                except NoOptionError:
+                    self.config_dict = {}
+                    self.conf_topic = ""
+                # config payload:
+                if self.conf_topic != "":
+                    if self.sensor_type == "sensor":
+                        for conf_item in range(0, self.nb_of_values):
+                            self.conf_payload = self.config_dict.copy()
+                            self.log.debug(
+                                str(type(self.config_dict["unit_of_measurement"]))
+                            )
+                            self.conf_payload["unit_of_measurement"] = self.config_dict[
+                                "unit_of_measurement"
+                            ][conf_item]
+                            self.conf_payload["value_template"] = self.config_dict[
+                                "value_template"
+                            ][conf_item]
+                            self.log.debug("conf_payload: " + str(self.conf_payload))
+                            self.conf_payload = json.dumps(self.conf_payload)
+                            self._send_config(self.conf_payload, self.conf_topic)
+                    else:
+                        self.log.debug("conf_payload: " + str(self.config_dict))
+                        self.conf_payload = json.dumps(self.config_dict)
+                        self._send_config(self.conf_payload, self.conf_topic)
 
+            except NoOptionError:
+                del self.config_dict
 
     def check_state(self):
         """Called to check the latest state of sensor and publish it. If not
@@ -64,6 +191,12 @@ class Sensor(ABC):
         """Sends msg to the dest on all publishers."""
         for conn in self.publishers:
             conn.publish(msg, dest)
+
+    def _send_config(self, msg, dest):
+        """Sends msg to the dest on all publishers."""
+        for conn in self.publishers:
+            if "mqtt" in str(conn):
+                conn.publish(msg, dest, config=True)
 
     def cleanup(self):
         """Called when shutting down the sensor, give it a chance to clean up

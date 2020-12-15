@@ -128,16 +128,19 @@ class MqttConnection(Connection):
 
         self.log.info("Connection to MQTT is successful")
 
-    def publish(self, message, destination):
+    def publish(self, message, destination, config=False):
         """Publishes message to destination, logging if there is an error."""
-        self._publish_mqtt(message, destination, False)
+        self._publish_mqtt(message, destination, False, config)
 
-    def _publish_mqtt(self, message, topic, retain):
+    def _publish_mqtt(self, message, topic, retain, config=False):
         try:
             if not self.connected:
                 self.log.warning("MQTT is not currently connected! Ignoring message")
                 return
-            full_topic = "{}/{}".format(self.root_topic, topic)
+            if config:
+                full_topic = topic
+            else:
+                full_topic = "{}/{}".format(self.root_topic, topic)
             rval = self.client.publish(full_topic, message, retain=retain, qos=0)
             if rval[0] == mqtt.MQTT_ERR_NO_CONN:
                 self.log.error("Error puiblishing update %s to %s", message, full_topic)
