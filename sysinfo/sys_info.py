@@ -64,6 +64,8 @@ class SysInfoSensor(Sensor):
             self.sys_info_dict["mem_per"] = psutil.virtual_memory()[2]
         if "disk_usage" in self.info_required:
             self.sys_info_dict["disk_usage"] = self.disk_usg()
+        if "swap_per" in self.info_required:
+            self.sys_info_dict["swap_per"] = psutil.swap_memory()
 
         self.publish_state()
         """Publishes the system info data."""
