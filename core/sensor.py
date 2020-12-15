@@ -80,6 +80,8 @@ class Sensor(ABC):
                         in self.device_class_dict["binary_sensor"]
                     ):
                         self.sensor_type = "binary_sensor"
+                        if self.config_dict["device_class"] == self.sensor_type:
+                            del self.config_dict["device_class"]
                         try:
                             self.config_dict["payload_on"] = "on"
                             self.config_dict["payload_on"] = params("PayLoadOn")
@@ -115,6 +117,8 @@ class Sensor(ABC):
                         in self.device_class_dict["sensor"]
                     ):
                         self.sensor_type = "sensor"
+                        if self.config_dict["device_class"] == self.sensor_type:
+                            del self.config_dict["device_class"]
                         try:
                             self.config_dict["unit_of_measurement"] = params("Unit")
                             self.config_dict["unit_of_measurement"] = self.config_dict[
