@@ -68,6 +68,7 @@ class Sensor(ABC):
             }
             # get parameters to construct homeassistant config message
             self.config_dict = {}
+            conf_item = ""
             try:
                 self.config_dict["name"] = params("Destination")
                 self.log.debug("Config dict: " + str(self.config_dict))
@@ -109,6 +110,7 @@ class Sensor(ABC):
                             + "binary_sensor"
                             + "/"
                             + self.config_dict["name"]
+                            + conf_item
                             + "/config"
                         )
                         self.log.debug("Config dict: " + str(self.config_dict))
@@ -149,6 +151,7 @@ class Sensor(ABC):
                             + "sensor"
                             + "/"
                             + self.config_dict["name"]
+                            + conf_item
                             + "/config"
                         )
                         self.log.debug("Config dict: " + str(self.config_dict))
