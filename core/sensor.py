@@ -63,7 +63,7 @@ class Sensor(ABC):
             except NoOptionError:
                 self.nb_of_values = 0
             self.device_class_dict = {
-                "binary_sensor": ["binare_sensor", "motion", "door", "window"],
+                "binary_sensor": ["binary_sensor", "motion", "door", "window"],
                 "sensor": ["sensor", "humidity", "temperature", "battery"],
             }
             # get parameters to construct homeassistant config message
