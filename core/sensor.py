@@ -69,6 +69,7 @@ class Sensor(ABC):
             # get parameters to construct homeassistant config message
             self.config_dict = {}
             try:
+                self.sensor_name = params(class).split(".")[0]
                 self.config_dict["name"] = (
                     params("Destination").replace(" ", "").strip().split(",")
                 )
@@ -107,7 +108,8 @@ class Sensor(ABC):
                             params("DiscoveryPrefix")
                             + "/"
                             + "binary_sensor"
-                            + "/"
+                            + "/" 
+                            + self.sensor_name
                             + self.config_dict["name"][0]
                             + "/config"
                         )
@@ -152,7 +154,8 @@ class Sensor(ABC):
                                 params("DiscoveryPrefix")
                                 + "/"
                                 + "sensor"
-                                + "/"
+                                + "/" 
+                                + self.sensor_name
                                 + self.config_dict["name"][conf_item].strip()
                                 + "/config"
                             )
