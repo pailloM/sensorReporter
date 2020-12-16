@@ -144,7 +144,7 @@ class Sensor(ABC):
                     self.conf_topic = ""
                 # config payload and config topic:
                 # only sensor_type supports multiple sensors
-                if self.conf_topic != "":
+                if self.config_dict != {}:
                     if self.sensor_type == "sensor":
                         for conf_item in range(0, self.nb_of_values):
                             # construct topic msg
