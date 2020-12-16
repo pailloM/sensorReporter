@@ -160,9 +160,9 @@ class Sensor(ABC):
                                 + "/config"
                             )
                             self.conf_payload = self.config_dict.copy()
-                            self.log.debug(
-                                str(type(self.config_dict["unit_of_measurement"]))
-                            )
+                            self.conf_payload["name"] = self.config_dict["name"][
+                                conf_item
+                            ]
                             self.conf_payload["unit_of_measurement"] = self.config_dict[
                                 "unit_of_measurement"
                             ][conf_item]
