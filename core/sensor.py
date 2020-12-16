@@ -69,7 +69,7 @@ class Sensor(ABC):
             # get parameters to construct homeassistant config message
             self.config_dict = {}
             try:
-                self.sensor_name = params(class).split(".")[0]
+                self.sensor_name = params("class").split(".")[0]
                 self.config_dict["name"] = (
                     params("Destination").replace(" ", "").strip().split(",")
                 )
@@ -84,6 +84,8 @@ class Sensor(ABC):
                     ):
                         self.sensor_type = "binary_sensor"
                         try:
+                            if self.config_dict["device_class"] == "binary_sensor":
+                                del self.config_dict["device_class"]
                             self.config_dict["payload_on"] = "on"
                             self.config_dict["payload_on"] = params("PayLoadOn")
                         except NoOptionError:
@@ -108,7 +110,7 @@ class Sensor(ABC):
                             params("DiscoveryPrefix")
                             + "/"
                             + "binary_sensor"
-                            + "/" 
+                            + "/"
                             + self.sensor_name
                             + self.config_dict["name"][0]
                             + "/config"
@@ -120,6 +122,8 @@ class Sensor(ABC):
                     ):
                         self.sensor_type = "sensor"
                         try:
+                            if self.config_dict["device_class"] == "sensor":
+                                del self.config_dict["device_class"]
                             self.config_dict["unit_of_measurement"] = params("Unit")
                             self.config_dict["unit_of_measurement"] = self.config_dict[
                                 "unit_of_measurement"
@@ -154,7 +158,7 @@ class Sensor(ABC):
                                 params("DiscoveryPrefix")
                                 + "/"
                                 + "sensor"
-                                + "/" 
+                                + "/"
                                 + self.sensor_name
                                 + self.config_dict["name"][conf_item].strip()
                                 + "/config"
