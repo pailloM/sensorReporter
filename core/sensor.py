@@ -63,7 +63,7 @@ class Sensor(ABC):
             except NoOptionError:
                 self.nb_of_values = 0
             self.device_class_dict = {
-                "binary_sensor": ["binare_sensor", "motion", "door", "window"],
+                "binary_sensor": ["binary_sensor", "motion", "door", "window"],
                 "sensor": ["sensor", "humidity", "temperature", "battery"],
             }
             # get parameters to construct homeassistant config message
@@ -108,7 +108,7 @@ class Sensor(ABC):
                             + "/"
                             + "binary_sensor"
                             + "/"
-                            + self.config_dict["name"]
+                            + self.config_dict["name"][0]
                             + "/config"
                         )
                         self.log.debug("Config dict: " + str(self.config_dict))
@@ -137,15 +137,12 @@ class Sensor(ABC):
                             )
                         except NoOptionError:
                             self.config_dict["value_template"] = ""
-                        self.conf_topic = (
-                            "sensor" + "/" + self.config_dict["name"] + "/config"
-                        )
 
                         self.log.debug("Config dict: " + str(self.config_dict))
                 except NoOptionError:
                     self.config_dict = {}
                     self.conf_topic = ""
-                # config payload:
+                # config payload and config topic:
                 # only sensor_type supports multiple sensors
                 if self.conf_topic != "":
                     if self.sensor_type == "sensor":
@@ -156,19 +153,19 @@ class Sensor(ABC):
                                 + "/"
                                 + "sensor"
                                 + "/"
-                                + self.config_dict["name"][conf_item]
+                                + self.config_dict["name"][conf_item].strip()
                                 + "/config"
                             )
                             self.conf_payload = self.config_dict.copy()
                             self.conf_payload["name"] = self.config_dict["name"][
                                 conf_item
-                            ]
+                            ].strip()
                             self.conf_payload["unit_of_measurement"] = self.config_dict[
                                 "unit_of_measurement"
-                            ][conf_item]
+                            ][conf_item].strip()
                             self.conf_payload["value_template"] = self.config_dict[
                                 "value_template"
-                            ][conf_item]
+                            ][conf_item].strip()
                             self.log.debug("conf_payload: " + str(self.conf_payload))
                             self.conf_payload = json.dumps(self.conf_payload)
                             self._send_config(self.conf_payload, self.conf_topic)
