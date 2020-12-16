@@ -39,9 +39,8 @@ class SysInfoSensor(Sensor):
         self.sys_info_dict = {}
 
         # Get configuration
-        self.destination = params("Destination")
-        self.info_required = params("InfoToReport").replace(" ", "").strip().split(",")
-        self.log.debug("Info required: " + str(self.info_required))
+        self.destination = params("Destination").replace(" ", "").strip().split(",")
+        self.log.debug("Info required: " + str(self.destination))
         # Kickoff a poll for the configured sensors.
         self.check_state()
 
@@ -66,21 +65,21 @@ class SysInfoSensor(Sensor):
 
     def check_state(self):
         """Calculate all required system information and request publish"""
-        if "nb_core" in self.info_required:
+        if "nb_core" in self.destination:
             self.sys_info_dict["core_nb"] = psutil.cpu_count(logical=False)
-        if "cpu_per" in self.info_required:
+        if "cpu_per" in self.destination:
             self.sys_info_dict["CPU_per"] = psutil.cpu_percent(1)
-        if "uptime" in self.info_required:
+        if "uptime" in self.destination:
             self.sys_info_dict["uptime"] = time.time() - psutil.boot_time()
-        if "mem_per" in self.info_required:
+        if "mem_per" in self.destination:
             self.sys_info_dict["mem_per"] = psutil.virtual_memory()[2]
-        if "disk_usage" in self.info_required:
+        if "disk_usage" in self.destination:
             self.sys_info_dict["disk_usage"] = self.disk_usg()
-        if "swap_per" in self.info_required:
+        if "swap_per" in self.destination:
             self.sys_info_dict["swap_per"] = psutil.swap_memory()
-        if "temp" in self.info_required:
+        if "temp" in self.destination:
             self.sys_info_dict["Temperature"] = self.curr_temp()
-        if "load_avg" in self.info_required:
+        if "load_avg" in self.destination:
             self.sys_info_dict["load_avg"] = psutil.getloadavg()
 
         self.publish_state()
