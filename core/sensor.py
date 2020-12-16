@@ -63,14 +63,15 @@ class Sensor(ABC):
             except NoOptionError:
                 self.nb_of_values = 0
             self.device_class_dict = {
-                "binary_sensor": ["binary_sensor", "motion", "door", "window"],
+                "binary_sensor": ["binare_sensor", "motion", "door", "window"],
                 "sensor": ["sensor", "humidity", "temperature", "battery"],
             }
             # get parameters to construct homeassistant config message
             self.config_dict = {}
-            conf_item = ""
             try:
-                self.config_dict["name"] = params("Destination")
+                self.config_dict["name"] = (
+                    params("Destination").replace(" ", "").strip().split(",")
+                )
                 self.log.debug("Config dict: " + str(self.config_dict))
                 try:
                     self.config_dict["device_class"] = params("DeviceClass")
@@ -81,8 +82,6 @@ class Sensor(ABC):
                         in self.device_class_dict["binary_sensor"]
                     ):
                         self.sensor_type = "binary_sensor"
-                        if self.config_dict["device_class"] == self.sensor_type:
-                            del self.config_dict["device_class"]
                         try:
                             self.config_dict["payload_on"] = "on"
                             self.config_dict["payload_on"] = params("PayLoadOn")
@@ -110,7 +109,6 @@ class Sensor(ABC):
                             + "binary_sensor"
                             + "/"
                             + self.config_dict["name"]
-                            + conf_item
                             + "/config"
                         )
                         self.log.debug("Config dict: " + str(self.config_dict))
@@ -119,8 +117,6 @@ class Sensor(ABC):
                         in self.device_class_dict["sensor"]
                     ):
                         self.sensor_type = "sensor"
-                        if self.config_dict["device_class"] == self.sensor_type:
-                            del self.config_dict["device_class"]
                         try:
                             self.config_dict["unit_of_measurement"] = params("Unit")
                             self.config_dict["unit_of_measurement"] = self.config_dict[
@@ -144,24 +140,25 @@ class Sensor(ABC):
                         self.conf_topic = (
                             "sensor" + "/" + self.config_dict["name"] + "/config"
                         )
-                        # construct topic msg
-                        self.conf_topic = (
-                            params("DiscoveryPrefix")
-                            + "/"
-                            + "sensor"
-                            + "/"
-                            + self.config_dict["name"]
-                            + conf_item
-                            + "/config"
-                        )
+
                         self.log.debug("Config dict: " + str(self.config_dict))
                 except NoOptionError:
                     self.config_dict = {}
                     self.conf_topic = ""
                 # config payload:
+                # only sensor_type supports multiple sensors
                 if self.conf_topic != "":
                     if self.sensor_type == "sensor":
                         for conf_item in range(0, self.nb_of_values):
+                            # construct topic msg
+                            self.conf_topic = (
+                                params("DiscoveryPrefix")
+                                + "/"
+                                + "sensor"
+                                + "/"
+                                + self.config_dict["name"][conf_item]
+                                + "/config"
+                            )
                             self.conf_payload = self.config_dict.copy()
                             self.log.debug(
                                 str(type(self.config_dict["unit_of_measurement"]))
