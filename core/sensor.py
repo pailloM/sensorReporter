@@ -100,9 +100,9 @@ class Sensor(ABC):
                                 del self.config_dict["payload_off"]
                             except NoOptionError:
                                 self.config_dict["payload_off"] = "off"
-                        # construct topic msg
+                        # construct initial part of topic msg final part added in mqtt_conn.py
                         self.conf_topic = (
-                            params("DiscoveryPrefix") + "/" + "binary_sensor" + "/"
+                            params("DiscoveryPrefix") + "/" + "binary_sensor"
                         )
                         self.log.debug("Config dict: " + str(self.config_dict))
                     elif (
@@ -132,22 +132,20 @@ class Sensor(ABC):
                             )
                         except NoOptionError:
                             self.config_dict["value_template"] = ""
-
+                        # construct initial part of topic msg final part added in mqtt_conn.py
+                        self.conf_topic = params("DiscoveryPrefix") + "/" + "sensor"
                         self.log.debug("Config dict: " + str(self.config_dict))
                 except NoOptionError:
                     self.config_dict = {}
                     self.conf_topic = ""
-                # config payload and config topic:
+                # config payload:
                 # only sensor_type supports multiple sensors
                 if self.config_dict != {}:
                     if self.sensor_type == "sensor":
+
                         for conf_item in range(
                             0, len(self.config_dict["value_template"])
                         ):
-                            # construct topic msg
-                            self.conf_topic = (
-                                params("DiscoveryPrefix") + "/" + "sensor" + "/"
-                            )
                             self.conf_payload = self.config_dict.copy()
                             self.conf_payload["name"] = self.config_dict["name"][
                                 conf_item
