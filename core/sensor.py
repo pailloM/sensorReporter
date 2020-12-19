@@ -18,7 +18,6 @@ Classes: Sensor
 """
 
 from abc import ABC
-import json
 import logging
 from configparser import NoOptionError
 from core.utils import set_log_level
@@ -87,6 +86,7 @@ class Sensor(ABC):
                             if self.config_dict["device_class"] == "binary_sensor":
                                 del self.config_dict["device_class"]
                             self.config_dict["name"] = self.config_dict["name"][0]
+                            self.config_dict["friendly name"] = self.config_dict["name"]
                             self.config_dict["payload_on"] = "on"
                             self.config_dict["payload_on"] = params("PayLoadOn")
                         except NoOptionError:
@@ -108,13 +108,7 @@ class Sensor(ABC):
                                 self.config_dict["payload_off"] = "off"
                         # construct topic msg
                         self.conf_topic = (
-                            params("DiscoveryPrefix")
-                            + "/"
-                            + "binary_sensor"
-                            + "/"
-                            + self.sensor_name
-                            + self.config_dict["name"][0]
-                            + "/config"
+                            params("DiscoveryPrefix") + "/" + "binary_sensor" + "/"
                         )
                         self.log.debug("Config dict: " + str(self.config_dict))
                     elif (
@@ -156,18 +150,15 @@ class Sensor(ABC):
                         for conf_item in range(0, self.nb_of_values):
                             # construct topic msg
                             self.conf_topic = (
-                                params("DiscoveryPrefix")
-                                + "/"
-                                + "sensor"
-                                + "/"
-                                + self.sensor_name
-                                + self.config_dict["name"][conf_item].strip()
-                                + "/config"
+                                params("DiscoveryPrefix") + "/" + "sensor" + "/"
                             )
                             self.conf_payload = self.config_dict.copy()
                             self.conf_payload["name"] = self.config_dict["name"][
                                 conf_item
                             ].strip()
+                            self.conf_payload["friendly name"] = self.conf_payload[
+                                "name"
+                            ]
                             self.conf_payload["unit_of_measurement"] = self.config_dict[
                                 "unit_of_measurement"
                             ][conf_item].strip()
@@ -175,12 +166,10 @@ class Sensor(ABC):
                                 "value_template"
                             ][conf_item].strip()
                             self.log.debug("conf_payload: " + str(self.conf_payload))
-                            self.conf_payload = json.dumps(self.conf_payload)
                             self._send_config(self.conf_payload, self.conf_topic)
                     else:
                         self.log.debug("conf_payload: " + str(self.config_dict))
-                        self.conf_payload = json.dumps(self.config_dict)
-                        self._send_config(self.conf_payload, self.conf_topic)
+                        self._send_config(self.config_dict, self.conf_topic)
 
             except NoOptionError:
                 del self.config_dict

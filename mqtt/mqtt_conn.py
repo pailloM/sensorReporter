@@ -17,6 +17,7 @@
 Classes: MqttConnection
 """
 from configparser import NoOptionError
+import json
 import socket
 import ssl
 import traceback
@@ -131,7 +132,11 @@ class MqttConnection(Connection):
     def publish(self, message, destination, config=False):
         """Publishes message to destination, logging if there is an error."""
         if config:
-            self._publish_mqtt(message, destination, True, config)
+            destination = (
+                destination + self.root_topic + "_" + message["name"] + "/config"
+            )
+            message["name"] = socket.gethostname() + "_" + message["name"]
+            self._publish_mqtt(json.dumps(message), destination, True, config)
         else:
             self._publish_mqtt(message, destination, False, config)
 
