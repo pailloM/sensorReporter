@@ -133,7 +133,7 @@ class MqttConnection(Connection):
         """Publishes message to destination, logging if there is an error."""
         if config:
             destination = (
-                destination + self.root_topic + "/" + message["name"] + "/config"
+                destination + socket.gethostname() + "/" + message["name"] + "/config"
             )
             self._publish_mqtt(json.dumps(message), destination, True, config)
         else:
