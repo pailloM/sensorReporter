@@ -18,7 +18,6 @@ Classes: Sensor
 """
 
 from abc import ABC
-import json
 import logging
 from configparser import NoOptionError
 from core.utils import set_log_level
@@ -108,13 +107,7 @@ class Sensor(ABC):
                                 self.config_dict["payload_off"] = "off"
                         # construct topic msg
                         self.conf_topic = (
-                            params("DiscoveryPrefix")
-                            + "/"
-                            + "binary_sensor"
-                            + "/"
-                            + self.sensor_name
-                            + self.config_dict["name"][0]
-                            + "/config"
+                            params("DiscoveryPrefix") + "/" + "binary_sensor" + "/"
                         )
                         self.log.debug("Config dict: " + str(self.config_dict))
                     elif (
@@ -156,13 +149,7 @@ class Sensor(ABC):
                         for conf_item in range(0, self.nb_of_values):
                             # construct topic msg
                             self.conf_topic = (
-                                params("DiscoveryPrefix")
-                                + "/"
-                                + "sensor"
-                                + "/"
-                                + self.sensor_name
-                                + self.config_dict["name"][conf_item].strip()
-                                + "/config"
+                                params("DiscoveryPrefix") + "/" + "sensor" + "/"
                             )
                             self.conf_payload = self.config_dict.copy()
                             self.conf_payload["name"] = self.config_dict["name"][
@@ -175,12 +162,10 @@ class Sensor(ABC):
                                 "value_template"
                             ][conf_item].strip()
                             self.log.debug("conf_payload: " + str(self.conf_payload))
-                            self.conf_payload = json.dumps(self.conf_payload)
                             self._send_config(self.conf_payload, self.conf_topic)
                     else:
                         self.log.debug("conf_payload: " + str(self.config_dict))
-                        self.conf_payload = json.dumps(self.config_dict)
-                        self._send_config(self.conf_payload, self.conf_topic)
+                        self._send_config(self.config_dict, self.conf_topic)
 
             except NoOptionError:
                 del self.config_dict
