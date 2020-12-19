@@ -135,6 +135,7 @@ class MqttConnection(Connection):
             destination = (
                 destination + socket.gethostname() + "/" + message["name"] + "/config"
             )
+            message["name"] = message["name"] + "_" + socket.gethostname()
             self._publish_mqtt(json.dumps(message), destination, True, config)
         else:
             self._publish_mqtt(message, destination, False, config)
