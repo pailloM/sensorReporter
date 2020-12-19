@@ -135,7 +135,7 @@ class MqttConnection(Connection):
             destination = "{}/{}/{}/config".format(
                 destination, socket.gethostname(), message["name"]
             )
-            message["name"] = "{}_{}".format(message["name"], socket.gethostname())
+            # message["name"] = "{}_{}".format(message["name"], socket.gethostname())
             message["state_topic"] = "{}/{}".format(
                 self.root_topic, message["state_topic"]
             )
