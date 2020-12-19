@@ -132,8 +132,8 @@ class MqttConnection(Connection):
     def publish(self, message, destination, config=False):
         """Publishes message to destination, logging if there is an error."""
         if config:
-            destination = "{}/{}/config".format(
-                destination + socket.gethostname() +  + message["name"] + 
+            destination = "{}/{}/{}/config".format(
+                destination, socket.gethostname(), message["name"]
             )
             message["name"] = "{}_{}".format(message["name"], socket.gethostname())
             message["state_topic"] = "{}/{}".format(
