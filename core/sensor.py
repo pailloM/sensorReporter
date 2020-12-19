@@ -146,7 +146,9 @@ class Sensor(ABC):
                 # only sensor_type supports multiple sensors
                 if self.config_dict != {}:
                     if self.sensor_type == "sensor":
-                        for conf_item in range(0, self.config_dict["value_template"]):
+                        for conf_item in range(
+                            0, len(self.config_dict["value_template"])
+                        ):
                             # construct topic msg
                             self.conf_topic = (
                                 params("DiscoveryPrefix") + "/" + "sensor" + "/"
