@@ -132,10 +132,13 @@ class MqttConnection(Connection):
     def publish(self, message, destination, config=False):
         """Publishes message to destination, logging if there is an error."""
         if config:
-            destination = (
-                destination + socket.gethostname() + "/" + message["name"] + "/config"
+            destination = "{}/{}/config".format(
+                destination + socket.gethostname() +  + message["name"] + 
             )
-            message["name"] = message["name"] + "_" + socket.gethostname()
+            message["name"] = "{}_{}".format(message["name"], socket.gethostname())
+            message["state_topic"] = "{}/{}".format(
+                self.root_topic, message["state_topic"]
+            )
             self._publish_mqtt(json.dumps(message), destination, True, config)
         else:
             self._publish_mqtt(message, destination, False, config)

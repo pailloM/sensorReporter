@@ -57,11 +57,7 @@ class Sensor(ABC):
                 self.mqtt_publisher = False
         self.log.debug("mqtt_publisher: " + str(self.mqtt_publisher))
         if self.mqtt_publisher:
-            try:
-                self.nb_of_values = int(params("NbOfValues"))
-            except NoOptionError:
-                self.nb_of_values = 0
-            self.device_class_dict = {
+            self.DEVICE_CLASS_DICT = {
                 "binary_sensor": ["binary_sensor", "motion", "door", "window"],
                 "sensor": ["sensor", "humidity", "temperature", "battery"],
             }
@@ -70,16 +66,15 @@ class Sensor(ABC):
             try:
                 self.sensor_name = params("class").split(".")[0]
                 self.config_dict["name"] = (
-                    params("Destination").replace(" ", "").strip().split(",")
+                    params("Sensors").replace(" ", "").strip().split(",")
                 )
                 self.log.debug("Config dict: " + str(self.config_dict))
                 try:
                     self.config_dict["device_class"] = params("DeviceClass")
-                    # cannot reconstruct state topic. Missing root topic in this class
-                    self.config_dict["state_topic"] = params("StateTopic")
+                    self.config_dict["state_topic"] = params("Destination")
                     if (
                         self.config_dict["device_class"]
-                        in self.device_class_dict["binary_sensor"]
+                        in self.DEVICE_CLASS_DICT["binary_sensor"]
                     ):
                         self.sensor_type = "binary_sensor"
                         try:
@@ -112,7 +107,7 @@ class Sensor(ABC):
                         self.log.debug("Config dict: " + str(self.config_dict))
                     elif (
                         self.config_dict["device_class"]
-                        in self.device_class_dict["sensor"]
+                        in self.DEVICE_CLASS_DICT["sensor"]
                     ):
                         self.sensor_type = "sensor"
                         try:
