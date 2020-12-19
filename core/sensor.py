@@ -86,7 +86,7 @@ class Sensor(ABC):
                             if self.config_dict["device_class"] == "binary_sensor":
                                 del self.config_dict["device_class"]
                             self.config_dict["name"] = self.config_dict["name"][0]
-                            self.config_dict["friendly name"] = self.config_dict["name"]
+                            self.config_dict["friendly_name"] = self.config_dict["name"]
                             self.config_dict["payload_on"] = "on"
                             self.config_dict["payload_on"] = params("PayLoadOn")
                         except NoOptionError:
@@ -156,7 +156,7 @@ class Sensor(ABC):
                             self.conf_payload["name"] = self.config_dict["name"][
                                 conf_item
                             ].strip()
-                            self.conf_payload["friendly name"] = self.conf_payload[
+                            self.conf_payload["friendly_name"] = self.conf_payload[
                                 "name"
                             ]
                             self.conf_payload["unit_of_measurement"] = self.config_dict[
