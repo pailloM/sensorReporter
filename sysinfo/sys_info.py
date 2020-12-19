@@ -39,8 +39,8 @@ class SysInfoSensor(Sensor):
         self.sys_info_dict = {}
 
         # Get configuration
-        self.destination = params("class").split(".")[0]
-        self.info_required = params("Destination").replace(" ", "").strip().split(",")
+        self.destination = params("Destination")
+        self.info_required = params("Sensors").replace(" ", "").strip().split(",")
         self.log.debug("Info required: " + str(self.info_required))
         # Kickoff a poll for the configured sensors.
         self.check_state()
