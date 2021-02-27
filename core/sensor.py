@@ -20,7 +20,8 @@ Classes: Sensor
 from abc import ABC
 import logging
 from configparser import NoOptionError
-from core.utils import set_log_level
+from core.utils import set_log_level, get_sequential_params
+from mqtt.mqtt_HA_config import get_mqtt_config
 
 
 class Sensor(ABC):
@@ -57,113 +58,8 @@ class Sensor(ABC):
                 self.mqtt_publisher = False
         self.log.debug("mqtt_publisher: " + str(self.mqtt_publisher))
         if self.mqtt_publisher:
-            self.DEVICE_CLASS_DICT = {
-                "binary_sensor": ["binary_sensor", "motion", "door", "window"],
-                "sensor": ["sensor", "humidity", "temperature", "battery"],
-            }
-            # get parameters to construct homeassistant config message
-            self.config_dict = {}
-            try:
-                self.sensor_name = params("class").split(".")[0]
-                self.config_dict["name"] = (
-                    params("Sensors").replace(" ", "").strip().split(",")
-                )
-                self.log.debug("Config dict: " + str(self.config_dict))
-                try:
-                    self.config_dict["device_class"] = params("DeviceClass")
-                    self.config_dict["state_topic"] = params("Destination")
-                    if (
-                        self.config_dict["device_class"]
-                        in self.DEVICE_CLASS_DICT["binary_sensor"]
-                    ):
-                        self.sensor_type = "binary_sensor"
-                        try:
-                            if self.config_dict["device_class"] == "binary_sensor":
-                                del self.config_dict["device_class"]
-                            self.config_dict["name"] = self.config_dict["name"][0]
-                            self.config_dict["payload_on"] = "on"
-                            self.config_dict["payload_on"] = params("PayLoadOn")
-                        except NoOptionError:
-                            try:
-                                self.config_dict["payload_closed"] = params(
-                                    "PayLoadClosed"
-                                )
-                                del self.config_dict["payload_on"]
-                            except NoOptionError:
-                                self.config_dict["payload_on"] = "on"
-                        try:
-                            self.config_dict["payload_off"] = "off"
-                            self.config_dict["payload_off"] = params("PayLoadOff")
-                        except NoOptionError:
-                            try:
-                                self.config_dict["payload_open"] = params("PayLoadOpen")
-                                del self.config_dict["payload_off"]
-                            except NoOptionError:
-                                self.config_dict["payload_off"] = "off"
-                        # construct initial part of topic msg final part added in mqtt_conn.py
-                        self.conf_topic = (
-                            params("DiscoveryPrefix") + "/" + "binary_sensor"
-                        )
-                        self.log.debug("Config dict: " + str(self.config_dict))
-                    elif (
-                        self.config_dict["device_class"]
-                        in self.DEVICE_CLASS_DICT["sensor"]
-                    ):
-                        self.sensor_type = "sensor"
-                        try:
-                            if self.config_dict["device_class"] == "sensor":
-                                del self.config_dict["device_class"]
-                            self.config_dict["unit_of_measurement"] = params("Unit")
-                            self.config_dict["unit_of_measurement"] = self.config_dict[
-                                "unit_of_measurement"
-                            ].split(",")
-                            self.log.debug(
-                                "Unit: " + str(self.config_dict["unit_of_measurement"])
-                            )
-                        except NoOptionError:
-                            self.config_dict["unit_of_measurement"] = ""
-                        try:
-                            self.config_dict["value_template"] = params("ValueTemplate")
-                            self.config_dict["value_template"] = self.config_dict[
-                                "value_template"
-                            ].split(",")
-                            self.log.debug(
-                                "Template: " + str(self.config_dict["value_template"])
-                            )
-                        except NoOptionError:
-                            self.config_dict["value_template"] = ""
-                        # construct initial part of topic msg final part added in mqtt_conn.py
-                        self.conf_topic = params("DiscoveryPrefix") + "/" + "sensor"
-                        self.log.debug("Config dict: " + str(self.config_dict))
-                except NoOptionError:
-                    self.config_dict = {}
-                    self.conf_topic = ""
-                # config payload:
-                # only sensor_type supports multiple sensors
-                if self.config_dict != {}:
-                    if self.sensor_type == "sensor":
-
-                        for conf_item in range(
-                            0, len(self.config_dict["value_template"])
-                        ):
-                            self.conf_payload = self.config_dict.copy()
-                            self.conf_payload["name"] = self.config_dict["name"][
-                                conf_item
-                            ].strip()
-                            self.conf_payload["unit_of_measurement"] = self.config_dict[
-                                "unit_of_measurement"
-                            ][conf_item].strip()
-                            self.conf_payload["value_template"] = self.config_dict[
-                                "value_template"
-                            ][conf_item].strip()
-                            self.log.debug("conf_payload: " + str(self.conf_payload))
-                            self._send_config(self.conf_payload, self.conf_topic)
-                    else:
-                        self.log.debug("conf_payload: " + str(self.config_dict))
-                        self._send_config(self.config_dict, self.conf_topic)
-
-            except NoOptionError:
-                del self.config_dict
+            config_dict, conf_topic = get_mqtt_config(params, self.log)
+            self._send_config(config_dict, conf_topic)
 
     def check_state(self):
         """Called to check the latest state of sensor and publish it. If not

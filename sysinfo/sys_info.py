@@ -20,6 +20,7 @@ import json
 import psutil
 import time
 from core.sensor import Sensor
+from core.utils import parse_values, get_sequential_params
 
 
 class SysInfoSensor(Sensor):
@@ -31,17 +32,22 @@ class SysInfoSensor(Sensor):
         super().__init__(publishers, params)
 
         self.log.info("Configuing System Info Sensor")
+        sensors = get_sequential_params(params, "Sensor")
+        destinations = get_sequential_params(params, "Destination")
+        templates = get_sequential_params(params, "Template")
+        laststates = [None] * len(sensors)
+        if len(sensors) != len(destinations) != len(templates):
+            raise ValueError(
+                "List of addresses and destinations do not match up!")
+        self.devices = dict(zip(sensors, destinations))
+        self.states = dict(zip(sensors, laststates))
+        self.log.debug(f"Info required: {self.devices}")
+
         if self.poll <= 0:
             raise ValueError(
                 "SystemInfoSensor requires a positive Poll value: " "%s", self.poll
             )
 
-        self.sys_info_dict = {}
-
-        # Get configuration
-        self.destination = params("Destination")
-        self.info_required = params("Sensors").replace(" ", "").strip().split(",")
-        self.log.debug("Info required: " + str(self.info_required))
         # Kickoff a poll for the configured sensors.
         self.check_state()
 
@@ -66,23 +72,24 @@ class SysInfoSensor(Sensor):
 
     def check_state(self):
         """Calculate all required system information and request publish"""
-        if "nb_core" in self.info_required:
-            self.sys_info_dict["core_nb"] = psutil.cpu_count(logical=False)
-        if "cpu_per" in self.info_required:
-            self.sys_info_dict["CPU_per"] = psutil.cpu_percent(1)
-        if "uptime" in self.info_required:
-            self.sys_info_dict["uptime"] = time.time() - psutil.boot_time()
-        if "mem_per" in self.info_required:
-            self.sys_info_dict["mem_per"] = psutil.virtual_memory()[2]
-        if "disk_usage" in self.info_required:
-            self.sys_info_dict["disk_usage"] = self.disk_usg()
-        if "swap_per" in self.info_required:
-            self.sys_info_dict["swap_per"] = psutil.swap_memory()
-        if "temp" in self.info_required:
-            self.sys_info_dict["Temperature"] = self.curr_temp()
-        if "load_avg" in self.info_required:
-            self.sys_info_dict["load_avg"] = psutil.getloadavg()
+        if "nb_core" in self.devices:
+            self.states["core_nb"] = psutil.cpu_count(logical=False)
+        if "cpu_per" in self.devices:
+            self.states["cpu_per"] = psutil.cpu_percent(1)
+        if "uptime" in self.devices:
+            self.states["uptime"] = time.time() - psutil.boot_time()
+        if "mem_per" in self.devices:
+            self.states["mem_per"] = psutil.virtual_memory()[2]
+        if "disk_usage" in self.devices:
+            self.states["disk_usage"] = self.disk_usg()
+        if "swap_per" in self.devices:
+            self.states["swap_per"] = psutil.swap_memory()
+        if "temp" in self.devices:
+            self.states["temp"] = self.curr_temp()
+        if "load_avg" in self.devices:
+            self.states["load_avg"] = psutil.getloadavg()
 
         self.publish_state()
         """Publishes the system info data."""
-        self._send(json.dumps(self.sys_info_dict), self.destination)
+        for key in self.devices:
+            self._send(self.states[key], self.devices[key])

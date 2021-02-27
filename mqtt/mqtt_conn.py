@@ -24,6 +24,7 @@ import traceback
 from time import sleep
 import paho.mqtt.client as mqtt
 from core.connection import Connection
+from mqtt.mqtt_HA_config import get_mqtt_config
 
 LWT = "status"
 REFRESH = "refresh"
