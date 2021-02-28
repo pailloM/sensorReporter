@@ -31,7 +31,7 @@ class SysInfoSensor(Sensor):
         be a positive number."""
         super().__init__(publishers, params)
 
-        self.log.info("Configuing System Info Sensor")
+        self.log.info("Configuring System Info Sensor")
         sensors = get_sequential_params(params, "Sensor")
         destinations = get_sequential_params(params, "Destination")
         templates = get_sequential_params(params, "Template")

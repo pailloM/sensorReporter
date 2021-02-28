@@ -58,8 +58,10 @@ class Sensor(ABC):
                 self.mqtt_publisher = False
         self.log.debug("mqtt_publisher: " + str(self.mqtt_publisher))
         if self.mqtt_publisher:
-            config_dict, conf_topic = get_mqtt_config(params, self.log)
-            self._send_config(config_dict, conf_topic)
+            configs = get_mqtt_config(params, self.log)
+            for config in configs:
+                self.log.debug(f"mqtt config to publish: {config}")
+                self._send_config(config[0], config[1])
 
     def check_state(self):
         """Called to check the latest state of sensor and publish it. If not
