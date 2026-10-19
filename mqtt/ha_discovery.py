@@ -79,16 +79,19 @@ class HADiscoveryBridge:
         name = cfg.pop("name", None)
         state_dest = cfg.pop("state_dest", None)
         command_src = cfg.pop("command_src", None)
-        object_id = (unique_id
-                     or re.sub(r"[^A-Za-z0-9_]", "_",
-                               str(state_dest or command_src)))
+        #object_id = (unique_id
+        #             or re.sub(r"[^A-Za-z0-9_]", "_",
+        #                       str(state_dest or command_src)))
+        tmp_object_id = re.sub(
+            r"[^A-Za-z0-9_]", "_",str(state_dest or command_src)
+        )
         unique_id = cfg.pop(
             "unique_id", 
-            f"{self.client_name}_{object_id}"
+            f"{self.client_name}_{tmp_object_id}"
         )
         kwargs = dict(cfg)                       # device_class, units, templates...
-        kwargs["name"] = name or object_id       # required by every *Info class
-        kwargs[""] = object_id
+        kwargs["name"] = name or tmp_object_id       # required by every *Info class
+        kwargs[""] = tmp_object_id
         kwargs["device"] = self.device_info
         if unique_id:
             kwargs["unique_id"] = unique_id
