@@ -39,7 +39,6 @@ class HADiscoveryBridge:
         self.log.debug("HADiscoveryBridge initialized with config:\n%s", json.dumps(conn_cfg, indent=2))
         self.client_name = conn_cfg["Client"]
         self.node_id = re.sub(r"[^A-Za-z0-9_]", "_", self.client_name)
-        # self.device_info = DeviceInfo(name=self.client_name, identifiers=self.node_id)
         self.root_topic = conn_cfg["RootTopic"]
         self.prefix = conn_cfg.get("HAPrefix", "homeassistant")
         self.enabled = bool(conn_cfg.get("HADiscovery", False)) and HAVE_HAD
@@ -47,7 +46,6 @@ class HADiscoveryBridge:
         self.published: dict[str, str] = {}   # topic -> payload
         self._seen: set = set()
 
-        name = conn_cfg.get("DeviceName")
         self.device_info = None
         if HAVE_HAD:
             name = self.client_name
@@ -78,14 +76,16 @@ class HADiscoveryBridge:
         _, info_cls_name = self.COMPONENT_MAP[component]
         info_cls = getattr(hads, info_cls_name)
 
-        unique_id = cfg.pop("unique_id", None)
         name = cfg.pop("name", None)
         state_dest = cfg.pop("state_dest", None)
         command_src = cfg.pop("command_src", None)
         object_id = (unique_id
                      or re.sub(r"[^A-Za-z0-9_]", "_",
                                str(state_dest or command_src)))
-
+        unique_id = cfg.pop(
+            "unique_id", 
+            f"{self.client_name}_{object_id}"
+        )
         kwargs = dict(cfg)                       # device_class, units, templates...
         kwargs["name"] = name or object_id       # required by every *Info class
         kwargs[""] = object_id
