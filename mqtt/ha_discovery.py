@@ -3,6 +3,7 @@
 import json
 import re
 from typing import Any
+from time import sleep
 
 try:
     from ha_mqtt_discoverable import DeviceInfo
@@ -51,7 +52,7 @@ class HADiscoveryBridge:
             name = self.client_name
             ident = "{}_{}".format(
                 name,
-                conn_cfg["User"].replace(" ", "_").lower(),
+                conn_cfg["DeviceID"].replace(" ", "_").lower(),
             )
             self.device_info = DeviceInfo(name=name, identifiers=ident)
 
@@ -111,8 +112,6 @@ class HADiscoveryBridge:
             self.log.error("Bad HADiscovery config for %s: %s", object_id, exc)
             return
 
-        # The library's auto-generated topics are useless here; point HA
-        # at the topics sensorReporter actually publishes to.
         if state_dest:
             payload["state_topic"] = "{}/{}".format(
                 self.root_topic, state_dest)
@@ -132,6 +131,7 @@ class HADiscoveryBridge:
         self.log.debug("HADiscovery announced %s: %s", cfg_topic, body)
         self.published[cfg_topic] = body
         self._seen.add(cfg_topic)
+        sleep(2)  # give HA time to process the config before state arrives
 
     def withdraw_all(self) -> None:
         """Blank out retained configs before a config reload."""
