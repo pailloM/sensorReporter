@@ -199,7 +199,6 @@ class MqttConnection(Connection):
     def disconnect(self) -> None:
         """ Closes the connection to the MQTT broker."""
         self.log.info("Disconnecting from MQTT")
-        self.ha.withdraw_all()
         self.ha.withdraw_stale()
         self._publish_mqtt(OFFLINE, self.lwt, True)
         self.client.loop_stop()
@@ -239,12 +238,10 @@ class MqttConnection(Connection):
             self.client.message_callback_add(full_topic, on_message)
         ha_cfg = comm_conn.get("HADiscovery")
         if ha_cfg:
-            self.log.debug("Announcing HADiscovery for %s", ha_cfg)
             cfg = dict(ha_cfg)                      # don't mutate the YAML dict
             cfg.setdefault("command_src", comm_conn.get("CommandSrc"))
             cfg.setdefault("state_dest", comm_conn.get("StateDest"))
             self.ha.announce(cfg)
-            self.log.debug("HADiscovery announced for %s", cfg)
 
     def on_connect(self,
                    client:mqtt.Client,

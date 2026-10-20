@@ -44,7 +44,11 @@ class HADiscoveryBridge:
         self.prefix = conn_cfg.get("HAPrefix", "homeassistant")
         self.enabled = bool(conn_cfg.get("HADiscovery", False)) and HAVE_HAD
         self.availability = None      # set by MqttConnection once known
-        self.published: dict[str, str] = {}   # topic -> payload
+        try:
+            with open('.ha_entities.json', 'r') as f:
+                self.published: dict[str, str] = json.load(f)   # topic -> payload
+        except FileNotFoundError:
+            self.published: dict[str, str] = {}
         self._seen: set = set()
 
         self.device_info = None
@@ -57,8 +61,11 @@ class HADiscoveryBridge:
             self.device_info = DeviceInfo(name=name, identifiers=ident)
 
         if conn_cfg.get("HADiscovery", False) and not HAVE_HAD:
-            log.warning("HADiscovery requested but ha-mqtt-discoverable is "
+            self.announcelog.warning("HADiscovery requested but ha-mqtt-discoverable is "
                         "not installed; run ./install_dependencies.sh hadiscovery")
+        elif not self.enabled and self.published:
+            self.log.info("HADiscovery disabled in config; removing previously published configs")
+            self.withdraw_all()
 
     def set_availability(self, topic: str, online: str, offline: str) -> None:
         self.availability = {"availability_topic": topic,
@@ -67,6 +74,7 @@ class HADiscoveryBridge:
 
     def announce(self, cfg: dict[str, Any]) -> None:
         if not self.enabled:
+            self.log.debug("HADiscovery disabled; skipping announce for %s", cfg)
             return
 
         component = cfg.pop("component", "sensor")
@@ -137,7 +145,10 @@ class HADiscoveryBridge:
         """Blank out retained configs before a config reload."""
         for topic in self.published:
             self.client.publish(topic, "", qos=1, retain=True)
+            self.log.debug("HADiscovery withdrawing config: %s", topic)
         self.published.clear()
+        with open(".ha_entities.json", "w") as f:
+            json.dump(self.published, f)
 
     def republish_all(self):
         if not self.enabled:
@@ -154,4 +165,6 @@ class HADiscoveryBridge:
                 self.log.debug("HADiscovery withdrawing stale configs: %s",
                             self.published[topic]
                 )
+        with open(".ha_entities.json", "w") as f:
+            json.dump(self.published, f)
         self._seen.clear()
