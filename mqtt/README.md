@@ -170,7 +170,7 @@ Supports the following components:
 
 Setting HADiscovery: False or omitting it will publish empty payload to previously published topics, thus removing the sensors and device.
 
-Sensors not available in the sensor_reporter.yml, will be removed on disconnect, if no payload has been published to the StateDest of the sensor.
+Sensors removed from the sensor_reporter.yml, will be deleted on disconnect, if no payload has been published to the StateDest of the sensor.
 
 ```yaml
 Logging:
