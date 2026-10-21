@@ -151,6 +151,61 @@ SensorGovee:
             Retain: yes
     Level: INFO
 ```
+  
+### Homeassistant discovery
+
+Homeassistant discovery is build on ha_mqtt_discoverable.
+It will publish configuration payloads for the sensors configured with the HADiscovery key. All the sensors are linked to a device named after the connection["Client"] key.
+
+Supports the following components:
+
+* sensor
+* binary_sensor
+* switch
+* light
+* number
+* select
+* button
+* cover
+
+Setting HADiscovery: False or omitting it will publish empty payload to previously published topics, thus removing the sensors and device.
+
+Sensors not available in the sensor_reporter.yml, will be removed on disconnect, if no payload has been published to the StateDest of the sensor.
+
+```yaml
+Logging:
+    Syslog: yes
+    Level: INFO
+
+Connection1:
+    Class: mqtt.mqtt_conn.MqttConnection
+    Name: MQTT
+    Client: test
+    User: user
+    Password: password
+    Host: localhost
+    Port: 1883
+    Keepalive: 10
+    RootTopic: sensor_reporter
+    TLS: no
+    HADiscovery: True  # default to false if not present
+    HAPrefix: homeassistant-disc  # optional, default: homeassistant
+    Level: DEBUG
+
+SensorGovee:
+    Class: govee.govee_sensor.GoveeSensor
+    Connections:
+        MQTT:
+            StateDest: govee
+            Retain: yes
+            HADiscovery:                   # homeassistant discovery specific section
+                name: Temp sensor
+                component: sensor
+                device_class: temperature
+                unit_of_measurement: "°C"
+                value_template: "{{ value_json.temp }}"
+    Level: INFO
+```
 
 ## Homie Connection
 
