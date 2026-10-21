@@ -12,7 +12,6 @@ try:
 except ImportError:
     HAVE_HAD = False
 
-_PUBLISHED: dict[str, dict[str, str]] = {}   # namespace -> {topic: payload}
 
 
 class HADiscoveryBridge:
@@ -46,9 +45,9 @@ class HADiscoveryBridge:
         self.availability = None      # set by MqttConnection once known
         try:
             with open('.ha_entities.json', 'r') as f:
-                self.published: dict[str, str] = json.load(f)   # topic -> payload
+                self.published: dict[str, dict[str, str]] = json.load(f)   # topic -> payload
         except FileNotFoundError:
-            self.published: dict[str, str] = {}
+            self.published: dict[str, dict[str, str]] = {}
         self._seen: set = set()
 
         self.device_info = None
@@ -158,7 +157,7 @@ class HADiscoveryBridge:
 
     def withdraw_stale(self) -> None:
         """Call after all devices have re-registered."""
-        for topic, _ in self.published.items():
+        for topic in self.published:
             if topic not in self._seen:
                 self.client.publish(topic, "", qos=1, retain=True)
                 del self.published[topic]
