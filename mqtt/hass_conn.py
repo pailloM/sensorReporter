@@ -142,6 +142,10 @@ class HassConnection(MqttConnection):
         """ Closes the connection to the MQTT broker."""
         self.log.debug("HassConnection disconnecting from MQTT")
         self.withdraw_stale()
+        with open(".ha_entities.json", "w") as f:
+            json.dump(self.published, f)
+        self._seen.clear()
+        self.published.clear()
         super().disconnect()
 
     def set_availability(self, topic: str, online: str, offline: str) -> None:
@@ -237,7 +241,7 @@ class HassConnection(MqttConnection):
     def withdraw_stale(self) -> None:
         """Call after all devices have re-registered."""
         self.log.debug("Withdrawing stale HADiscovery configs")
-        for topic in self.published:
+        for topic in list(self.published.keys()):
             if topic not in self._seen:
                 self.client.publish(topic, "", qos=1, retain=True)
                 self.log.debug(
@@ -245,6 +249,7 @@ class HassConnection(MqttConnection):
                     self.published[topic],
                 )
                 del self.published[topic]
-        with open(".ha_entities.json", "w") as f:
-            json.dump(self.published, f)
-        self._seen.clear()
+
+    def publish_device_properties(self):
+        self.withdraw_stale()
+        super().publish_device_properties()
