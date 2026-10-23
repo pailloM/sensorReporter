@@ -43,7 +43,7 @@ class HassConnection(MqttConnection):
         self.log.debug("HADiscoveryBridge initialized with config:\n%s", json.dumps(conn_cfg, indent=2))
 
         self.client_name = conn_cfg["Client"]
-        self.node_id = re.sub(r"[^A-Za-z0-9_]", "_", self.client_name)
+        self.node_id = re.sub(r"\W", "_", self.client_name)
         self.root_topic = conn_cfg["RootTopic"]
         self.prefix = conn_cfg.get("HAPrefix", "homeassistant")
         self.discovery_enabled = bool(conn_cfg.get("HADiscovery", False)) and HAVE_HAD
@@ -270,17 +270,3 @@ class HassConnection(MqttConnection):
         with open(".ha_entities.json", "w") as f:
             json.dump(self.published, f)
         self._seen.clear()
-
-    # def publish_device_properties(self):
-        # if not self.discovery_enabled:
-        #     self.log.debug("HADiscovery disabled; skipping device properties publish")
-        #     return
-        # if not self.device_info:
-        #     self.log.debug("No device info available; skipping device properties publish")
-        #     return
-        # device_info = self.device_info.model_dump(exclude_none=True, by_alias=True)
-        # cfg_topic = "{}/{}/device_properties".format(
-        #     self.prefix, self.node_id)
-        # body = json.dumps(device_info)
-        # self.client.publish(cfg_topic, body, qos=1, retain=True)
-        # self.log.debug("HADiscovery published device properties %s: %s", cfg_topic, body)
