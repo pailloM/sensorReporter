@@ -165,9 +165,7 @@ class HassConnection(MqttConnection):
         """ Closes the connection to the MQTT broker."""
         self.log.info("HassConnection disconnecting from MQTT")
         self.withdraw_stale()
-        self._publish_mqtt(OFFLINE, self.lwt, True)
-        self.client.loop_stop()
-        self.client.disconnect()
+        super().disconnect()
 
     def set_availability(self, topic: str, online: str, offline: str) -> None:
         self.availability = {"availability_topic": topic,
