@@ -245,6 +245,7 @@ class HassConnection(MqttConnection):
 
     def withdraw_all(self) -> None:
         """Blank out retained configs before a config reload."""
+        self.log.debug("Withdrawing all HADiscovery configs")
         for topic in self.published:
             self.client.publish(topic, "", qos=1, retain=True)
             self.log.debug("HADiscovery withdrawing config: %s", topic)
@@ -260,6 +261,7 @@ class HassConnection(MqttConnection):
 
     def withdraw_stale(self) -> None:
         """Call after all devices have re-registered."""
+        self.log.debug("Withdrawing stale HADiscovery configs")
         for topic in self.published:
             if topic not in self._seen:
                 self.client.publish(topic, "", qos=1, retain=True)

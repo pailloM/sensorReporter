@@ -192,7 +192,6 @@ class MqttConnection(Connection):
     def disconnect(self) -> None:
         """ Closes the connection to the MQTT broker."""
         self.log.info("Disconnecting from MQTT")
-        # self.ha.withdraw_stale()
         self._publish_mqtt(OFFLINE, self.lwt, True)
         self.client.loop_stop()
         self.client.disconnect()
