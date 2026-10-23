@@ -46,7 +46,7 @@ class HassConnection(MqttConnection):
         self.node_id = re.sub(r"\W", "_", self.client_name)
         self.root_topic = conn_cfg["RootTopic"]
         self.prefix = conn_cfg.get("HAPrefix", "homeassistant")
-        self.discovery_enabled = bool(conn_cfg.get("HADiscovery", False)) and HAVE_HAD
+        self.discovery_enabled = bool(conn_cfg.get("HADiscovery", True)) and HAVE_HAD
         self.availability = None  # set by MqttConnection once known
 
         try:
@@ -91,32 +91,9 @@ class HassConnection(MqttConnection):
             the message.
         """
         #handler can be None if a sensor registers it's outputs
-        if handler:
-            destination = comm_conn['CommandSrc']
-            full_topic = self.TOPIC_FORMAT.format(self.root_topic, destination)
-            self.log.info("Registering for messages on '%s'", full_topic)
-
-            def on_message(client:mqtt.Client,
-                           userdata:Any,
-                           msg:mqtt.MQTTMessage) -> None:
-                message = msg.payload.decode("utf-8")
-
-                self.log.debug(
-                    "Received message client %s userdata %s and msg %s",
-                    client,
-                    userdata,
-                    message,
-                )
-                handler(message)
-
-            # We use self.registered here only to store the topic to re-subscribe later.
-            # The handler in .register is not used,
-            # we only set it to satisfy the Python type checker
-            self.registered[full_topic] = handler
-            self.client.subscribe(full_topic, qos=0)
-            self.client.message_callback_add(full_topic, on_message)
+        super().register(comm_conn, handler)
         ha_cfg = comm_conn.get("HADiscovery")
-        if ha_cfg:
+        if ha_cfg and self.discovery_enabled:
             cfg = dict(ha_cfg)                      # don't mutate the YAML dict
             cfg.setdefault("command_src", comm_conn.get("CommandSrc"))
             cfg.setdefault("state_dest", comm_conn.get("StateDest"))
@@ -163,7 +140,7 @@ class HassConnection(MqttConnection):
 
     def disconnect(self) -> None:
         """ Closes the connection to the MQTT broker."""
-        self.log.info("HassConnection disconnecting from MQTT")
+        self.log.debug("HassConnection disconnecting from MQTT")
         self.withdraw_stale()
         super().disconnect()
 
@@ -259,7 +236,7 @@ class HassConnection(MqttConnection):
 
     def withdraw_stale(self) -> None:
         """Call after all devices have re-registered."""
-        self.log.info("Withdrawing stale HADiscovery configs")
+        self.log.debug("Withdrawing stale HADiscovery configs")
         for topic in self.published:
             if topic not in self._seen:
                 self.client.publish(topic, "", qos=1, retain=True)
