@@ -163,7 +163,7 @@ class HassConnection(MqttConnection):
 
     def disconnect(self) -> None:
         """ Closes the connection to the MQTT broker."""
-        self.log.info("Disconnecting from MQTT")
+        self.log.info("HassConnection disconnecting from MQTT")
         self.withdraw_stale()
         self._publish_mqtt(OFFLINE, self.lwt, True)
         self.client.loop_stop()
@@ -261,7 +261,7 @@ class HassConnection(MqttConnection):
 
     def withdraw_stale(self) -> None:
         """Call after all devices have re-registered."""
-        self.log.debug("Withdrawing stale HADiscovery configs")
+        self.log.info("Withdrawing stale HADiscovery configs")
         for topic in self.published:
             if topic not in self._seen:
                 self.client.publish(topic, "", qos=1, retain=True)
