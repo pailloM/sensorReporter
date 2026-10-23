@@ -240,10 +240,11 @@ class HassConnection(MqttConnection):
         for topic in self.published:
             if topic not in self._seen:
                 self.client.publish(topic, "", qos=1, retain=True)
-                del self.published[topic]
-                self.log.debug("HADiscovery withdrawing stale configs: %s",
-                            self.published[topic]
+                self.log.debug(
+                    "HADiscovery withdrawing stale configs: %s",
+                    self.published[topic],
                 )
+                del self.published[topic]
         with open(".ha_entities.json", "w") as f:
             json.dump(self.published, f)
         self._seen.clear()
