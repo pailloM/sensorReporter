@@ -22,7 +22,7 @@ from time import sleep
 from typing import Callable, Optional, Any, Tuple, Dict
 import paho.mqtt.client as mqtt
 from core.connection import Connection
-from mqtt.ha_discovery import HADiscoveryBridge
+# from mqtt.ha_discovery import HADiscoveryBridge
 
 
 REFRESH = "refresh"
@@ -99,12 +99,12 @@ class MqttConnection(Connection):
         self.client.on_subscribe = self.on_subscribe
         self.client.on_publish = self.on_publish
         self.client.username_pw_set(user, passwd)
-        self.ha = HADiscoveryBridge(self.client, conn_cfg, self.log)
-        if self.ha.enabled:
-            self.ha.set_availability(
-                "{}/{}".format(self.root_topic, self.lwt),
-                ONLINE, OFFLINE
-            )
+        # self.ha = HADiscoveryBridge(self.client, conn_cfg, self.log)
+        # if self.ha.enabled:
+        #     self.ha.set_availability(
+        #         "{}/{}".format(self.root_topic, self.lwt),
+        #         ONLINE, OFFLINE
+        #     )
 
         self.log.info(
             "Attempting to connect to MQTT broker at %s:%s", self.host, self.port
@@ -199,7 +199,7 @@ class MqttConnection(Connection):
     def disconnect(self) -> None:
         """ Closes the connection to the MQTT broker."""
         self.log.info("Disconnecting from MQTT")
-        self.ha.withdraw_stale()
+        # self.ha.withdraw_stale()
         self._publish_mqtt(OFFLINE, self.lwt, True)
         self.client.loop_stop()
         self.client.disconnect()

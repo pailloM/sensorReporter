@@ -2,9 +2,11 @@
 """Optional Home Assistant discovery bridge built on ha-mqtt-discoverable."""
 import json
 import re
-from typing import Any
 from time import sleep
-
+from typing import Callable, Optional, Any
+import paho.mqtt.client as mqtt
+from core.connection import Connection
+from mqtt.mqtt_conn import MqttConnection, REFRESH, ONLINE, OFFLINE
 try:
     from ha_mqtt_discoverable import DeviceInfo
     from ha_mqtt_discoverable import sensors as hads
@@ -13,14 +15,15 @@ except ImportError:
     HAVE_HAD = False
 
 
-
-class HADiscoveryBridge:
-    """Emits HA discovery configs using an existing paho client.
+class HassConnection(MqttConnection):
+    """Emits HA discovery configs using MqttConnection's paho client.
 
     Only the discovery/config messages go through ha-mqtt-discoverable.
     State publication stays in MqttConnection so the generic Connection
     interface (shared with openHAB REST) is untouched.
     """
+
+    TOPIC_FORMAT = "{}/{}"  # root_topic, destination
 
     COMPONENT_MAP = {
         "sensor": ("Sensor", "SensorInfo"),
@@ -33,21 +36,30 @@ class HADiscoveryBridge:
         "cover": ("Cover", "CoverInfo"),
     }
 
-    def __init__(self, client, conn_cfg: dict[str, Any], log):
-        self.client = client
-        self.log = log
+    def __init__(self, msg_processor, conn_cfg: dict[str, Any]):
+        # Initialize MqttConnection base class (sets up self.client, etc.)
+        super().__init__(msg_processor, conn_cfg)
+
         self.log.debug("HADiscoveryBridge initialized with config:\n%s", json.dumps(conn_cfg, indent=2))
+
         self.client_name = conn_cfg["Client"]
         self.node_id = re.sub(r"[^A-Za-z0-9_]", "_", self.client_name)
         self.root_topic = conn_cfg["RootTopic"]
         self.prefix = conn_cfg.get("HAPrefix", "homeassistant")
-        self.enabled = bool(conn_cfg.get("HADiscovery", False)) and HAVE_HAD
-        self.availability = None      # set by MqttConnection once known
+        self.discovery_enabled = bool(conn_cfg.get("HADiscovery", False)) and HAVE_HAD
+        self.availability = None  # set by MqttConnection once known
+
         try:
             with open('.ha_entities.json', 'r') as f:
-                self.published: dict[str, dict[str, str]] = json.load(f)   # topic -> payload
+                self.published: dict[str, dict[str, str]] = json.load(f)  # topic -> payload
+
         except FileNotFoundError:
             self.published: dict[str, dict[str, str]] = {}
+
+        except json.JSONDecodeError:
+            self.log.warning("Failed to parse .ha_entities.json; starting with empty published entities")
+            self.published: dict[str, dict[str, str]] = {}
+
         self._seen: set = set()
 
         self.device_info = None
@@ -60,19 +72,110 @@ class HADiscoveryBridge:
             self.device_info = DeviceInfo(name=name, identifiers=ident)
 
         if conn_cfg.get("HADiscovery", False) and not HAVE_HAD:
-            self.announcelog.warning("HADiscovery requested but ha-mqtt-discoverable is "
+            self.log.warning("HADiscovery requested but ha-mqtt-discoverable is "
                         "not installed; run ./install_dependencies.sh hadiscovery")
-        elif not self.enabled and self.published:
+        elif not self.discovery_enabled and self.published:
             self.log.info("HADiscovery disabled in config; removing previously published configs")
             self.withdraw_all()
+        
+        self.set_availability(
+                self.TOPIC_FORMAT.format(self.root_topic, self.lwt),
+                ONLINE, OFFLINE
+            )
+
+    def register(self,
+                 comm_conn: dict[str, Any],
+                 handler:Optional[Callable[[str], None]]) -> None:
+        """ Registers a handler to be called on messages received on topic
+            appended to the root_topic. Handler is expected to take one argument,
+            the message.
+        """
+        #handler can be None if a sensor registers it's outputs
+        if handler:
+            destination = comm_conn['CommandSrc']
+            full_topic = self.TOPIC_FORMAT.format(self.root_topic, destination)
+            self.log.info("Registering for messages on '%s'", full_topic)
+
+            def on_message(client:mqtt.Client,
+                           userdata:Any,
+                           msg:mqtt.MQTTMessage) -> None:
+                message = msg.payload.decode("utf-8")
+
+                self.log.debug(
+                    "Received message client %s userdata %s and msg %s",
+                    client,
+                    userdata,
+                    message,
+                )
+                handler(message)
+
+            # We use self.registered here only to store the topic to re-subscribe later.
+            # The handler in .register is not used,
+            # we only set it to satisfy the Python type checker
+            self.registered[full_topic] = handler
+            self.client.subscribe(full_topic, qos=0)
+            self.client.message_callback_add(full_topic, on_message)
+        ha_cfg = comm_conn.get("HADiscovery")
+        if ha_cfg:
+            cfg = dict(ha_cfg)                      # don't mutate the YAML dict
+            cfg.setdefault("command_src", comm_conn.get("CommandSrc"))
+            cfg.setdefault("state_dest", comm_conn.get("StateDest"))
+            self.annouce_entitie(cfg)
+
+    def on_connect(self,
+                   client: mqtt.Client,
+                   userdata: Any,
+                   flags: dict[str, int],
+                   retcode: int) -> None:
+        """ Called when the client connects to the broker, resubscribe to the
+            sensorReporter topic.
+            Gets automatically called from self.client after connection
+            got fully established (on first connect and on reconnect)
+        """
+        refresh = self.TOPIC_FORMAT.format(self.root_topic, REFRESH)
+        self.log.info(
+            "Connected with client %s, userdata %s, flags %s, and "
+            "result code %s. Subscribing to refresh command topic %s",
+            client,
+            userdata,
+            flags,
+            retcode,
+            refresh,
+        )
+
+        self.connected = True
+
+        # Publish the ONLINE message to the LWT
+        self._publish_mqtt(ONLINE, self.lwt, True)
+        # send messages which got collected while connection was offline
+        super().conn_went_online()
+
+        # Resubscribe on connection
+        for reg in self.registered:
+            self.log.info("on_connect: Resubscribing to %s", reg)
+            self.client.subscribe(reg)
+
+        # Plublish entities configuration
+        self.republish_all()
+
+        # causes sensors to republish their states
+        self.msg_processor("MQTT connected")
+
+    def disconnect(self) -> None:
+        """ Closes the connection to the MQTT broker."""
+        self.log.info("Disconnecting from MQTT")
+        self.withdraw_stale()
+        self._publish_mqtt(OFFLINE, self.lwt, True)
+        self.client.loop_stop()
+        self.client.disconnect()
 
     def set_availability(self, topic: str, online: str, offline: str) -> None:
         self.availability = {"availability_topic": topic,
                              "payload_available": online,
                              "payload_not_available": offline}
 
-    def announce(self, cfg: dict[str, Any]) -> None:
-        if not self.enabled:
+    def annouce_entitie(self, cfg: dict[str, Any]) -> None:
+        if not self.discovery_enabled:
             self.log.debug("HADiscovery disabled; skipping announce for %s", cfg)
             return
 
@@ -88,7 +191,7 @@ class HADiscoveryBridge:
         state_dest = cfg.pop("state_dest", None)
         command_src = cfg.pop("command_src", None)
         object_id = re.sub(
-            r"[^A-Za-z0-9_]", "_",str(state_dest or command_src)
+            r"\W", "_", str(state_dest or command_src)
         )
         unique_id = cfg.pop(
             "unique_id", 
@@ -103,7 +206,7 @@ class HADiscoveryBridge:
         if self.availability:
             kwargs.update(self.availability)
         if state_dest:
-            kwargs["state_topic"] = "{}/{}".format(
+            kwargs["state_topic"] = self.TOPIC_FORMAT.format(
                 self.root_topic, state_dest)
         if command_src:
             kwargs["command_topic"] = "{}/{}/set".format(
@@ -120,7 +223,7 @@ class HADiscoveryBridge:
             return
 
         if state_dest:
-            payload["state_topic"] = "{}/{}".format(
+            payload["state_topic"] = self.TOPIC_FORMAT.format(
                 self.root_topic, state_dest)
             payload.pop("json_attributes_topic", None)
         if command_src:
@@ -150,7 +253,7 @@ class HADiscoveryBridge:
             json.dump(self.published, f)
 
     def republish_all(self):
-        if not self.enabled:
+        if not self.discovery_enabled:
             return
         for topic, payload in self.published.items():
             self.client.publish(topic, payload, qos=1, retain=True)
@@ -167,3 +270,17 @@ class HADiscoveryBridge:
         with open(".ha_entities.json", "w") as f:
             json.dump(self.published, f)
         self._seen.clear()
+
+    # def publish_device_properties(self):
+        # if not self.discovery_enabled:
+        #     self.log.debug("HADiscovery disabled; skipping device properties publish")
+        #     return
+        # if not self.device_info:
+        #     self.log.debug("No device info available; skipping device properties publish")
+        #     return
+        # device_info = self.device_info.model_dump(exclude_none=True, by_alias=True)
+        # cfg_topic = "{}/{}/device_properties".format(
+        #     self.prefix, self.node_id)
+        # body = json.dumps(device_info)
+        # self.client.publish(cfg_topic, body, qos=1, retain=True)
+        # self.log.debug("HADiscovery published device properties %s: %s", cfg_topic, body)
