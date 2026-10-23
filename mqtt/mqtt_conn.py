@@ -22,7 +22,6 @@ from time import sleep
 from typing import Callable, Optional, Any, Tuple, Dict
 import paho.mqtt.client as mqtt
 from core.connection import Connection
-# from mqtt.ha_discovery import HADiscoveryBridge
 
 
 REFRESH = "refresh"
@@ -99,12 +98,6 @@ class MqttConnection(Connection):
         self.client.on_subscribe = self.on_subscribe
         self.client.on_publish = self.on_publish
         self.client.username_pw_set(user, passwd)
-        # self.ha = HADiscoveryBridge(self.client, conn_cfg, self.log)
-        # if self.ha.enabled:
-        #     self.ha.set_availability(
-        #         "{}/{}".format(self.root_topic, self.lwt),
-        #         ONLINE, OFFLINE
-        #     )
 
         self.log.info(
             "Attempting to connect to MQTT broker at %s:%s", self.host, self.port
@@ -236,12 +229,6 @@ class MqttConnection(Connection):
             self.registered[full_topic] = handler
             self.client.subscribe(full_topic, qos=0)
             self.client.message_callback_add(full_topic, on_message)
-        ha_cfg = comm_conn.get("HADiscovery")
-        if ha_cfg:
-            cfg = dict(ha_cfg)                      # don't mutate the YAML dict
-            cfg.setdefault("command_src", comm_conn.get("CommandSrc"))
-            cfg.setdefault("state_dest", comm_conn.get("StateDest"))
-            self.ha.announce(cfg)
 
     def on_connect(self,
                    client:mqtt.Client,
@@ -270,8 +257,6 @@ class MqttConnection(Connection):
         self._publish_mqtt(ONLINE, self.lwt, True)
         # send messages which got collected while connection was offline
         super().conn_went_online()
-
-        self.ha.republish_all()
 
         # Resubscribe on connection
         for reg in self.registered:
