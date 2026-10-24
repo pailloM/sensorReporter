@@ -38,17 +38,7 @@ class HassConnection(MqttConnection):
 
     def __init__(self, msg_processor, conn_cfg: dict[str, Any]):
         # Initialize MqttConnection base class (sets up self.client, etc.)
-        super().__init__(msg_processor, conn_cfg)
-
-        self.log.debug("HADiscoveryBridge initialized with config:\n%s", json.dumps(conn_cfg, indent=2))
-
-        self.client_name = conn_cfg["Client"]
-        self.node_id = re.sub(r"\W", "_", self.client_name)
-        self.root_topic = conn_cfg["RootTopic"]
-        self.prefix = conn_cfg.get("HAPrefix", "homeassistant")
         self.discovery_enabled = bool(conn_cfg.get("HADiscovery", True)) and HAVE_HAD
-        self.availability = None  # set by MqttConnection once known
-
         try:
             with open('.ha_entities.json', 'r') as f:
                 self.published: dict[str, dict[str, str]] = json.load(f)  # topic -> payload
@@ -57,8 +47,16 @@ class HassConnection(MqttConnection):
             self.published: dict[str, dict[str, str]] = {}
 
         except json.JSONDecodeError:
-            self.log.warning("Failed to parse .ha_entities.json; starting with empty published entities")
             self.published: dict[str, dict[str, str]] = {}
+        
+        self.availability = None  # set by MqttConnection once known
+
+        # start mqtt client
+        super().__init__(msg_processor, conn_cfg)
+        self.log.debug("HAConnection initializing with config:\n%s", json.dumps(conn_cfg, indent=2))
+        self.client_name = conn_cfg["Client"]
+        self.node_id = re.sub(r"\W", "_", self.client_name)
+        self.prefix = conn_cfg.get("HAPrefix", "homeassistant")
 
         self._seen: set = set()
 
@@ -92,12 +90,26 @@ class HassConnection(MqttConnection):
         """
         #handler can be None if a sensor registers it's outputs
         super().register(comm_conn, handler)
-        ha_cfg = comm_conn.get("HADiscovery")
-        if ha_cfg and self.discovery_enabled:
-            cfg = dict(ha_cfg)                      # don't mutate the YAML dict
+        sensors_ha_cfg: list = []
+        if "HADiscovery" in comm_conn:
+            cfg = dict(comm_conn.get("HADiscovery"))                      # don't mutate the YAML dict
             cfg.setdefault("command_src", comm_conn.get("CommandSrc"))
             cfg.setdefault("state_dest", comm_conn.get("StateDest"))
-            self.annouce_entitie(cfg)
+            sensors_ha_cfg.append(cfg)
+        else:
+            # handle connections with multiple sensors
+            for sensor in comm_conn:
+                if "HADiscovery" in comm_conn[sensor]:
+                    cfg = dict(comm_conn[sensor].get("HADiscovery"))                      # don't mutate the YAML dict
+                    cfg.setdefault("command_src", comm_conn[sensor].get("CommandSrc"))
+                    cfg.setdefault("state_dest", comm_conn[sensor].get("StateDest"))
+                    self.log.debug("cfg for sensor %s: %s", sensor, cfg)
+                    sensors_ha_cfg.append(cfg)
+
+        if self.discovery_enabled:
+            for sensor_config in sensors_ha_cfg:
+                self.annouce_entitie(sensor_config)
+
 
     def on_connect(self,
                    client: mqtt.Client,
@@ -251,5 +263,11 @@ class HassConnection(MqttConnection):
                 del self.published[topic]
 
     def publish_device_properties(self):
+        """
+        Used to delete sensors removed from yaml file.
+        
+        Could be more useful if sensors and actuators are passed as args.
+        
+        """
         self.withdraw_stale()
         super().publish_device_properties()
