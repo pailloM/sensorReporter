@@ -152,10 +152,10 @@ SensorGovee:
     Level: INFO
 ```
   
-### Homeassistant discovery
+## Homeassistant discovery
 
 A connection to communicate via MQTT using Homeassistant discovery. It is build on ha_mqtt_discoverable.
-It will publish configuration payloads for the sensors actuators configured with the HADiscovery key. All the sensors are linked to a device named after the connection["Client"] key.
+It will publish configuration payloads for the sensors actuators configured with the HADiscovery key. All the sensors are linked to a device named after the connection["DeviceID"] key if available or derived from connection["Client"] key.
 
 Supports the following components:
 
@@ -192,6 +192,7 @@ Connection1:
     Keepalive: 10
     RootTopic: sensor_reporter
     TLS: no
+    DeviceID: sensor_reporter_test # optional
     HADiscovery: True  # optional, default: True. Set to false to remove device
     HAPrefix: homeassistant-disc  # optional, default: homeassistant
     Level: DEBUG
