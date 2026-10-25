@@ -2,11 +2,14 @@
 """Optional Home Assistant discovery bridge built on ha-mqtt-discoverable."""
 import json
 import re
+from collections.abc import Callable
 from time import sleep
-from typing import Callable, Optional, Any
+from typing import Any, ClassVar, Optional
+
 import paho.mqtt.client as mqtt
-from core.connection import Connection
-from mqtt.mqtt_conn import MqttConnection, REFRESH, ONLINE, OFFLINE
+
+from mqtt.mqtt_conn import OFFLINE, ONLINE, REFRESH, MqttConnection
+
 try:
     from ha_mqtt_discoverable import DeviceInfo
     from ha_mqtt_discoverable import sensors as hads
@@ -25,7 +28,7 @@ class HassConnection(MqttConnection):
 
     TOPIC_FORMAT = "{}/{}"  # root_topic, destination
 
-    COMPONENT_MAP = {
+    COMPONENT_MAP: ClassVar = {
         "sensor": ("Sensor", "SensorInfo"),
         "binary_sensor": ("BinarySensor", "BinarySensorInfo"),
         "switch": ("Switch", "SwitchInfo"),
@@ -48,7 +51,7 @@ class HassConnection(MqttConnection):
 
         except json.JSONDecodeError:
             self.published: dict[str, dict[str, str]] = {}
-        
+
         self.availability = None  # set by MqttConnection once known
 
         # start mqtt client
@@ -62,7 +65,7 @@ class HassConnection(MqttConnection):
 
         self.device_info = None
         if HAVE_HAD:
-            name = self.client_name
+            name = conn_cfg["DeviceID"] or self.client_name
             ident = "{}_{}".format(
                 name,
                 conn_cfg["DeviceID"].replace(" ", "_").lower(),
@@ -98,11 +101,11 @@ class HassConnection(MqttConnection):
             sensors_ha_cfg.append(cfg)
         else:
             # handle connections with multiple sensors
-            for sensor in comm_conn:
-                if "HADiscovery" in comm_conn[sensor]:
-                    cfg = dict(comm_conn[sensor].get("HADiscovery"))                      # don't mutate the YAML dict
-                    cfg.setdefault("command_src", comm_conn[sensor].get("CommandSrc"))
-                    cfg.setdefault("state_dest", comm_conn[sensor].get("StateDest"))
+            for sensor, value in comm_conn.items():
+                if "HADiscovery" in value:
+                    cfg = dict(value.get("HADiscovery"))                      # don't mutate the YAML dict
+                    cfg.setdefault("command_src", value.get("CommandSrc"))
+                    cfg.setdefault("state_dest", value.get("StateDest"))
                     self.log.debug("cfg for sensor %s: %s", sensor, cfg)
                     sensors_ha_cfg.append(cfg)
 
