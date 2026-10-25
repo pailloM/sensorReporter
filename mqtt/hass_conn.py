@@ -232,7 +232,6 @@ class HassConnection(MqttConnection):
         self.log.debug("HADiscovery announced %s: %s", cfg_topic, body)
         self.published[cfg_topic] = body
         self._seen.add(cfg_topic)
-        sleep(2)  # give HA time to process the config before state arrives
 
     def withdraw_all(self) -> None:
         """Blank out retained configs before a config reload."""
@@ -269,5 +268,9 @@ class HassConnection(MqttConnection):
         Could be more useful if sensors and actuators are passed as args.
         
         """
+        # Send empty configs to topice removed from yml
         self.withdraw_stale()
+
+        # give HA time to process the config before state arrives
+        sleep(.5 * len(self.published))
         super().publish_device_properties()
