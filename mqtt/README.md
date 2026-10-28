@@ -154,27 +154,31 @@ SensorGovee:
   
 ## Homeassistant discovery
 
-A connection to communicate via MQTT using Homeassistant discovery. It is build on ha_mqtt_discoverable.
-It will publish configuration payloads for the sensors actuators configured with the HADiscovery key. All the sensors are linked to a device named after the connection["DeviceID"] key if available or derived from connection["Client"] key.
+A connection to communicate via MQTT using Home Assistant discovery. It is built on `ha_mqtt_discoverable`.
+It publishes discovery configuration payloads for the sensors and actuators configured with the `HADiscovery` key.
+All entities are linked to a device named after the `Connection["DeviceID"]` key, when available, or derived from the `Connection["Client"]` key.
 
-Supports the following components:
+Supported Home Assistant entity components with links to their respective documentation:
 
-* sensor
-* binary_sensor
-* switch
-* light
-* number
-* select
-* button
-* cover
+* [sensor](https://www.home-assistant.io/integrations/sensor/)
+* [binary_sensor](https://www.home-assistant.io/integrations/binary_sensor/)
+* [switch](https://www.home-assistant.io/integrations/switch/)
+* [light](https://www.home-assistant.io/integrations/light/)
+* [number](https://www.home-assistant.io/integrations/number/)
+* [select](https://www.home-assistant.io/integrations/select/)
+* [button](https://www.home-assistant.io/integrations/button/)
+* [cover](https://www.home-assistant.io/integrations/cover/)
 
-Setting HADiscovery: False will publish empty payload to previously published topics, thus removing the sensors and device.
+The `HADiscovery` dictionary accepts standard Home Assistant discovery keys such as `name`, `component`, `device_class`, `unit_of_measurement`, and `value_template`. One of `name` or `component` is required. If the `component` key is not set the default is `sensor`.
+See the [MQTT discovery documentation](https://www.home-assistant.io/integrations/mqtt/) and the [sensor device class reference](https://www.home-assistant.io/integrations/sensor/#device-class) for all the available values.
 
-Sensors removed from the sensor_reporter.yml, will be deleted.
+Setting `HADiscovery: False` publishes empty payloads to the previously published configuration topics, removing the entities and device from Home Assistant.
 
-The MQTT client is fully inherited from the MQTT connection so all the settings of that connection still apply.
+Sensors removed from `sensor_reporter.yml` or for which the `HADiscovery` key is removed are deleted from Home Assistant by sending an empty payload to the sensor configuration topic.
 
-Exemple of homeassistant connection yml configuration, note the different Class:
+The MQTT client is fully inherited from the MQTT connection, all of the settings of that connection still apply.
+
+Example of a Home Assistant connection configuration:
 
 ```yaml
 Logging:
@@ -193,7 +197,7 @@ Connection1:
     RootTopic: sensor_reporter
     TLS: no
     DeviceID: sensor_reporter_test # optional
-    HADiscovery: True  # optional, default: True. Set to false to remove device
+    HADiscovery: True  # optional, default: True. Set to false to remove device from Home Assistant
     HAPrefix: homeassistant-disc  # optional, default: homeassistant
     Level: DEBUG
 
@@ -203,12 +207,12 @@ SensorGovee:
         MQTT:
             StateDest: govee
             Retain: yes
-            HADiscovery:                   # homeassistant discovery specific section
-                name: Temp sensor
-                component: sensor
+            HADiscovery:                                # Home Assistant discovery specific section
+                name: Temp sensor                       # required if component is not present, name displayed in the UI
+                component: sensor                       # required if name is not present, default is sensor
                 device_class: temperature
                 unit_of_measurement: "°C"
-                value_template: "{{ value_json.temp }}"
+                value_template: "{{ value_json.temp }}" # optional, can be used to extract data from a json string
     Level: INFO
 ```
 
