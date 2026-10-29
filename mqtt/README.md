@@ -154,7 +154,8 @@ SensorGovee:
   
 ## Homeassistant discovery
 
-A connection to communicate via MQTT using Home Assistant discovery. It is built on `ha_mqtt_discoverable`.
+A connection to communicate via MQTT using Home Assistant discovery.
+It is built on `ha_mqtt_discoverable`.
 It publishes discovery configuration payloads for the sensors and actuators configured with the `HADiscovery` key.
 All entities are linked to a device named after the `Connection["DeviceID"]` key, when available, or derived from the `Connection["Client"]` key.
 
@@ -169,7 +170,9 @@ Supported Home Assistant entity components with links to their respective docume
 * [button](https://www.home-assistant.io/integrations/button/)
 * [cover](https://www.home-assistant.io/integrations/cover/)
 
-The `HADiscovery` dictionary accepts standard Home Assistant discovery keys such as `name`, `component`, `device_class`, `unit_of_measurement`, and `value_template`. One of `name` or `component` is required. If the `component` key is not set the default is `sensor`.
+The `HADiscovery` dictionary accepts standard Home Assistant discovery keys such as `name`, `component`, `device_class`, `unit_of_measurement`, and `value_template`.
+One of `name` or `component` is required.
+If the `component` key is not set the default is `sensor`.
 See the [MQTT discovery documentation](https://www.home-assistant.io/integrations/mqtt/) and the [sensor device class reference](https://www.home-assistant.io/integrations/sensor/#device-class) for all the available values.
 
 Setting `HADiscovery: False` publishes empty payloads to the previously published configuration topics, removing the entities and device from Home Assistant.
